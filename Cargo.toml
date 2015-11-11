@@ -1,0 +1,12 @@
+[package]
+name = "sthttp"
+version = "0.1.0"
+authors = ["Andrew Lazarus <nerdrew@gmail.com>"]
+
+[dependencies]
+bytes = "*"
+env_logger = "*"
+httparse = "*"
+log = "*"
+mio = "*"
+time = "*"

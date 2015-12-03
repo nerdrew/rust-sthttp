@@ -7,7 +7,7 @@ extern crate sthttp;
 
 struct CustomHandler;
 
-impl sthttp::Handler for CustomHandler {
+impl sthttp::server::Handler for CustomHandler {
     fn handle(&self, req: sthttp::request::Request, res: &mut sthttp::response::Response) {
         debug!("request='{}'", unsafe { std::str::from_utf8_unchecked(req.body) });
         res.set_code(sthttp::status::Code::Ok200);
@@ -19,5 +19,5 @@ impl sthttp::Handler for CustomHandler {
 fn main() {
     env_logger::init().unwrap();
     let handler = CustomHandler;
-    sthttp::start("0.0.0.0:6567".parse().unwrap(), &handler);
+    sthttp::server::start("0.0.0.0:6567".parse().unwrap(), &handler);
 }

@@ -32,12 +32,13 @@ impl<'a> Response<'a> {
         self.code = Some(code);
     }
 
+    // TODO validate header
     pub fn add_header(&mut self, name: &'a str, value: &'a [u8]) {
         self.headers.push(httparse::Header { name: name, value: value});
     }
 
-    pub fn add_body(&mut self, body: &'a [u8]) {
-        self.body.push_all(body);
+    pub fn add_body(&mut self, body: &[u8]) {
+        self.body.extend_from_slice(body);
     }
 
     pub fn finalize(&mut self, buf: &mut Vec<u8>) {
@@ -54,12 +55,12 @@ impl<'a> Response<'a> {
         buf.append(&mut preamble.into_bytes());
 
         for header in self.headers.iter() {
-            buf.push_all(header.name.as_bytes());
-            buf.push_all(b": ");
-            buf.push_all(header.value);
-            buf.push_all(b"\r\n");
+            buf.extend_from_slice(header.name.as_bytes());
+            buf.extend_from_slice(b": ");
+            buf.extend_from_slice(header.value);
+            buf.extend_from_slice(b"\r\n");
         }
-        buf.push_all(b"\r\n");
+        buf.extend_from_slice(b"\r\n");
 
         buf.append(&mut self.body);
     }

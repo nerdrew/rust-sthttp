@@ -65,15 +65,15 @@ impl<'a> mio::Handler for HttpServer<'a> {
                 assert!(events.is_readable());
 
                 match self.server.accept() {
-                    Ok(Some(stream)) => {
+                    Ok(Some((stream, _addr))) => {
                         debug!("accepted a new connection");
 
                         let handler = self.handler;
                         let token = self.connections.insert_with(|token| {
-                            connection::Connection::new(stream, token, handler)
+                            connection::Connection::server(stream, token, handler)
                         }).unwrap();
 
-                        event_loop.register_opt(
+                        event_loop.register(
                             &self.connections[token].stream,
                             token,
                             mio::EventSet::readable(),
@@ -89,11 +89,27 @@ impl<'a> mio::Handler for HttpServer<'a> {
                 }
             }
             _ => {
-                debug!("{:?}: connection is ready; events={:?}", token, events);
-                self.connections[token].ready(event_loop, events);
+                debug!("{:?}: server connection is ready; events={:?}", token, events);
+                self.connections[token].ready(events);
 
-                if self.connections[token].is_closed() {
-                    let _ = self.connections.remove(token);
+                match self.connections[token].state {
+                    connection::State::Reading => {
+                        event_loop.reregister(
+                            &self.connections[token].stream,
+                            token,
+                            mio::EventSet::readable(),
+                            mio::PollOpt::oneshot()).unwrap();
+                    },
+                    connection::State::Writing => {
+                        event_loop.reregister(
+                            &self.connections[token].stream,
+                            token,
+                            mio::EventSet::writable(),
+                            mio::PollOpt::oneshot()).unwrap();
+                    },
+                    connection::State::Closed => {
+                        let _ = self.connections.remove(token);
+                    }
                 }
             }
         }
@@ -104,7 +120,7 @@ pub fn start(address: std::net::SocketAddr, handler: &Handler) {
     let server = mio::tcp::TcpListener::bind(&address).unwrap();
     let mut event_loop = mio::EventLoop::new().unwrap();
     debug!("Listening for HTTP on {}", address);
-    event_loop.register_opt(&server, SERVER, mio::EventSet::readable(), mio::PollOpt::empty()).unwrap();
+    event_loop.register(&server, SERVER, mio::EventSet::readable(), mio::PollOpt::empty()).unwrap();
     let mut http_server = HttpServer::new(server, handler);
     event_loop.run(&mut http_server).unwrap();
 }
